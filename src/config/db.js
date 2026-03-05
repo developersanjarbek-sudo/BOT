@@ -6,11 +6,15 @@ dotenv.config();
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI);
+    const conn = await mongoose.connect(process.env.MONGODB_URI, {
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+    });
     logger.info(`MongoDB Connected`);
   } catch (error) {
     logger.error(`Error: ${error.message}`);
-    process.exit(1);
+    throw error;
   }
 };
 

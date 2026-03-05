@@ -8,10 +8,6 @@ dotenv.config();
 // Main startup function
 const startBot = async () => {
     try {
-        // Connect to Database first
-        await connectDB();
-        console.log('✅ Database connected');
-
         // Express Server for Uptime/Webhook
         const app = express();
         const PORT = process.env.PORT || 3000;
@@ -28,13 +24,23 @@ const startBot = async () => {
             console.log(`🌐 Server running on port ${PORT}`);
         });
 
-        // Launch Bot
-        await bot.launch();
-        console.log('🤖 Bot started successfully!');
+        // Connect DB & launch bot without blocking port binding.
+        (async () => {
+            try {
+                await connectDB();
+                console.log('✅ Database connected');
+
+                await bot.launch();
+                console.log('🤖 Bot started successfully!');
+            } catch (err) {
+                console.error('❌ Bot startup failed:', err);
+                // Keep process alive so Render sees the port.
+            }
+        })();
 
     } catch (err) {
         console.error('❌ Startup failed:', err);
-        process.exit(1);
+        // Keep process alive so Render sees the port.
     }
 };
 
