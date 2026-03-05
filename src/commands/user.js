@@ -74,14 +74,14 @@ const sendMovie = async (ctx, movie, dbUser) => {
             buttons.push([Markup.button.callback('⚠️ Shikoyat', `report_${movie.code}`)]);
         }
 
-        // Send video only for VIP users (max restriction)
-        if (movie.fileId && isVip) {
+        // Send video for all users, but lock forwarding/saving for non-VIP
+        if (movie.fileId) {
             try {
                 // Video sending with protection
                 await ctx.replyWithVideo(movie.fileId, {
                     caption,
                     parse_mode: 'HTML',
-                    protect_content: false,
+                    protect_content: !isVip,
                     thumb: movie.poster || undefined,
                     ...Markup.inlineKeyboard(buttons)
                 });
@@ -645,7 +645,7 @@ export const setupUserCommands = (bot) => {
                 `├ 🔹 7 kun — <b>10,000 so'm</b>\n` +
                 `├ 🔹 30 kun — <b>30,000 so'm</b> (eng ommabop!)\n` +
                 `└ 🔹 90 kun — <b>80,000 so'm</b> (tejamkor!)\n\n` +
-                `📞 <b>To'lov uchun:</b> @syphervoid\n\n` +
+                `📞 <b>To'lov uchun:</b> @sanjarbek_404\n\n` +
                 `<i>💡 VIP oling va kinolardan to'liq bahramand bo'ling!</i>`;
 
             await ctx.replyWithHTML(message, Markup.inlineKeyboard([

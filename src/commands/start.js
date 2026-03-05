@@ -113,6 +113,9 @@ export const setupStartCommand = (bot) => {
                     movie.views = (movie.views || 0) + 1;
                     await movie.save().catch(() => { });
 
+                    const dbUser = await User.findOne({ telegramId: ctx.from.id }).catch(() => null);
+                    const isVip = dbUser && dbUser.vipUntil && new Date(dbUser.vipUntil) > new Date();
+
                     // Use ctx.t for dynamic text? Deep link usually needs quick access. 
                     // Let's rely on middleware default 'uz' if user is new.
                     let caption = ctx.t('movie_found', {
@@ -126,12 +129,23 @@ export const setupStartCommand = (bot) => {
                     if (movie.description) caption += `\n📝 ${movie.description}\n`;
 
                     const buttons = [
-                        [Markup.button.callback('❤️', `fav_${movie._id}`), Markup.button.callback('📤', `share_${movie.code}`)],
+                        [Markup.button.callback('❤️', `fav_${movie._id}`)],
                         [Markup.button.callback(ctx.t('menu_vip'), `review_${movie.code}`)]
                     ];
 
+                    if (isVip) {
+                        buttons[0].push(Markup.button.callback('📤', `share_${movie.code}`));
+                    } else {
+                        buttons.push([Markup.button.callback('💎 VIP Olish - Eksklyuziv!', 'vip_info')]);
+                    }
+
                     if (movie.fileId) {
-                        await ctx.replyWithVideo(movie.fileId, { caption, parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) });
+                        await ctx.replyWithVideo(movie.fileId, {
+                            caption,
+                            parse_mode: 'HTML',
+                            protect_content: !isVip,
+                            ...Markup.inlineKeyboard(buttons)
+                        });
                         return;
                     }
                     // ... other media types
