@@ -8,31 +8,6 @@ import { checkSubscription } from '../services/subscriptionService.js';
 import logger from '../utils/logger.js';
 
 export const setupStartCommand = (bot) => {
-    bot.start(async (ctx) => {
-        try {
-            // Check if started with movie code (deep link)
-            const startPayload = ctx.message?.text?.split(' ')[1];
-
-            // If deep link exists, we might still want to ensure language is set?
-            // For now, let's keep deep link logic simple, assuming language defaults to 'uz' via middleware if not set.
-            if (startPayload && /^\d+$/.test(startPayload)) {
-                // ... Existing Deep Link Logic (Simplified for brevity, but I should keep it or refactor)
-                // RE-INSERTING DEEP LINK LOGIC BELOW
-                const movie = await Movie.findOne({ code: parseInt(startPayload) }).catch(() => null);
-                if (movie) {
-                    movie.views = (movie.views || 0) + 1;
-                    await movie.save().catch(() => { });
-
-                    // Use ctx.t for dynamic text? Deep link usually needs quick access. 
-                    // Let's rely on middleware default 'uz' if user is new.
-                    let caption = ctx.t('movie_found', {
-                        title: movie.title,
-                        year: movie.year || 'N/A',
-                        genre: movie.genre || 'N/A',
-                        rating: movie.averageRating || '0.0',
-                        views: movie.views
-                    });
-
     // /help
     bot.command('help', async (ctx) => {
         try {
@@ -116,12 +91,38 @@ export const setupStartCommand = (bot) => {
 
             await ctx.reply(msg, {
                 parse_mode: 'HTML',
-                ...Markup.inlineKeyboard([[Markup.button.url('📞 Adminga yozish', 'https://t.me/syphervoid')]])
+                ...Markup.inlineKeyboard([[Markup.button.url('📞 Adminga yozish', 'https://t.me/sanjarbek_404')]])
             });
         } catch (e) {
             logger.error('Support command error:', e);
         }
     });
+
+    bot.start(async (ctx) => {
+        try {
+            // Check if started with movie code (deep link)
+            const startPayload = ctx.message?.text?.split(' ')[1];
+
+            // If deep link exists, we might still want to ensure language is set?
+            // For now, let's keep deep link logic simple, assuming language defaults to 'uz' via middleware if not set.
+            if (startPayload && /^\d+$/.test(startPayload)) {
+                // ... Existing Deep Link Logic (Simplified for brevity, but I should keep it or refactor)
+                // RE-INSERTING DEEP LINK LOGIC BELOW
+                const movie = await Movie.findOne({ code: parseInt(startPayload) }).catch(() => null);
+                if (movie) {
+                    movie.views = (movie.views || 0) + 1;
+                    await movie.save().catch(() => { });
+
+                    // Use ctx.t for dynamic text? Deep link usually needs quick access. 
+                    // Let's rely on middleware default 'uz' if user is new.
+                    let caption = ctx.t('movie_found', {
+                        title: movie.title,
+                        year: movie.year || 'N/A',
+                        genre: movie.genre || 'N/A',
+                        rating: movie.averageRating || '0.0',
+                        views: movie.views
+                    });
+
                     if (movie.description) caption += `\n📝 ${movie.description}\n`;
 
                     const buttons = [
