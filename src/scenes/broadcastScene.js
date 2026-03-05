@@ -22,6 +22,12 @@ const broadcastScene = new Scenes.WizardScene(
     // Step 2: Handle Input & Ask Audience
     async (ctx) => {
         try {
+            if (ctx.callbackQuery && ctx.callbackQuery.data === 'cancel_broadcast') {
+                await ctx.answerCbQuery('Bekor qilindi').catch(() => { });
+                try { await ctx.editMessageText('❌ Bekor qilindi.'); } catch (e) { }
+                return ctx.scene.leave();
+            }
+
             if (!ctx.message) return; // Ignore if not message
 
             // Save message details
@@ -95,7 +101,14 @@ const broadcastScene = new Scenes.WizardScene(
     },
     // Step 4: Final Sender
     async (ctx) => {
-        // logic in action
+        try {
+            // Step is mainly driven by confirm_send/cancel_broadcast actions.
+            // If user sends something else here, just remind.
+            if (ctx.callbackQuery) return;
+            return ctx.reply('✅ Yuborish uchun "✅ Yuborish" tugmasini bosing yoki bekor qiling.');
+        } catch (e) {
+            return ctx.scene.leave();
+        }
     }
 );
 
@@ -146,6 +159,18 @@ broadcastScene.action('cancel_broadcast', async (ctx) => {
         await ctx.editMessageText('❌ Bekor qilindi.');
     } catch (e) { }
     return ctx.scene.leave();
+});
+
+// Some setups may not route callbackQuery to scene.action reliably.
+// Provide explicit handlers as fallback while scene is active.
+broadcastScene.action(['target_all', 'target_vip'], async (ctx) => {
+    // Let wizard step 3 handle it
+    return ctx.wizard.selectStep(2)(ctx);
+});
+
+broadcastScene.action(['confirm_send', 'cancel_broadcast'], async (ctx) => {
+    // Let dedicated handlers handle it
+    return;
 });
 
 export default broadcastScene;

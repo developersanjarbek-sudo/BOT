@@ -37,10 +37,9 @@ export const locales = {
         vip_restricted_report: "🔒 <b>Shikoyat — faqat VIP uchun!</b>",
 
         report_sent: "✅ Shikoyatingiz adminga yuborildi. Rahmat!",
-        anon_chat_welcome: "🕵️‍♂️ <b>Anonim VIP Chat</b>\n\n🔍 Suhbatdosh qidirilmoqda...\nBoshqa VIP foydalanuvchi ulanganda anonim suhbat boshlanadi.\n\nBekor qilish: /cancel",
 
         // VIP Marketing
-        vip_promo_start: "💎 <b>VIP Obuna - Cheksiz Imkoniyatlar!</b>\n\nSiz hali VIP emassiz? Unda ko'p narsani o'tkazib yuboryapsiz!\n\n✅ <b>Eksklyuziv</b> kinolar\n✅ <b>Sharhlar</b> qoldirish\n✅ <b>VIP Chat</b>ga kirish\n\n<i>Hoziroq VIP bo'ling va kinolardan zavqlaning!</i>",
+        vip_promo_start: "💎 <b>VIP Obuna - Cheksiz Imkoniyatlar!</b>\n\nSiz hali VIP emassiz? Unda ko'p narsani o'tkazib yuboryapsiz!\n\n✅ <b>Eksklyuziv</b> kinolar\n✅ <b>Sharhlar</b> qoldirish\n\n<i>Hoziroq VIP bo'ling va kinolardan zavqlaning!</i>",
         vip_button_get: "💎 VIP sotib olish",
         vip_restricted: "🔒 Bu funksiya faqat VIP foydalanuvchilar uchun! Cheklovsiz foydalanish uchun VIP oling.",
 
@@ -98,14 +97,13 @@ export const locales = {
         menu_stats: "📊 Моя статистика",
         menu_vip: "💎 VIP Управление",
         menu_settings: "⚙️ Настройки",
-        menu_vip_chat: "🗣 VIP Чат",
         menu_vote: "🗳 Голосование",
         menu_vip_status: "⏳ Время VIP",
         menu_history: "📜 История",
         vip_time_remaining: "⏳ <b>Ваше время VIP:</b>\n\n📅 {days} дней, {hours} часов, {minutes} минут осталось.",
         vip_expired: "⚠️ Ваше время VIP истекло.",
 
-        vip_promo_start: "💎 <b>VIP Подписка - Безграничные возможности!</b>\n\nВы еще не VIP? Вы многое упускаете!\n\n✅ <b>Эксклюзивные</b> фильмы\n✅ Оставляйте <b>отзывы</b>\n✅ Доступ в <b>VIP Чат</b>\n\n<i>Станьте VIP прямо сейчас и наслаждайтесь кино!</i>",
+        vip_promo_start: "💎 <b>VIP Подписка - Безграничные возможности!</b>\n\nВы еще не VIP? Вы многое упускаете!\n\n✅ <b>Эксклюзивные</b> фильмы\n✅ Оставляйте <b>отзывы</b>\n\n<i>Станьте VIP прямо сейчас и наслаждайтесь кино!</i>",
         vip_button_get: "💎 Купить VIP",
         vip_restricted: "🔒 Эта функция доступна только VIP пользователям! Получите VIP для снятия ограничений.",
 
@@ -160,14 +158,13 @@ export const locales = {
         menu_stats: "📊 My Stats",
         menu_vip: "💎 VIP Management",
         menu_settings: "⚙️ Settings",
-        menu_vip_chat: "🗣 VIP Chat",
         menu_vote: "🗳 Vote",
         menu_vip_status: "⏳ VIP Time",
         menu_history: "📜 History",
         vip_time_remaining: "⏳ <b>Your VIP Time:</b>\n\n📅 {days} days, {hours} hours, {minutes} minutes left.",
         vip_expired: "⚠️ Your VIP time has expired.",
 
-        vip_promo_start: "💎 <b>VIP Subscription - Limitless Possibilities!</b>\n\nNot a VIP yet? You are missing out!\n\n✅ <b>Exclusive</b> movies\n✅ Leave <b>reviews</b>\n✅ Access to <b>VIP Chat</b>\n\n<i>Become a VIP now and enjoy the movies!</i>",
+        vip_promo_start: "💎 <b>VIP Subscription - Limitless Possibilities!</b>\n\nNot a VIP yet? You are missing out!\n\n✅ <b>Exclusive</b> movies\n✅ Leave <b>reviews</b>\n\n<i>Become a VIP now and enjoy the movies!</i>",
         vip_button_get: "💎 Get VIP",
         vip_restricted: "🔒 This feature is for VIP users only! Get VIP to verify restrictions.",
 

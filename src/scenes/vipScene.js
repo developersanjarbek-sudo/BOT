@@ -16,7 +16,9 @@ const vipScene = new Scenes.WizardScene(
             });
             buttons.push([Markup.button.callback(ctx.t('cancel') || '❌ Cancel', 'cancel_vip')]);
 
-            await ctx.reply(ctx.t('vip_admin_title'), {
+            await ctx.reply((ctx.t('vip_admin_title') || '💎 VIP Boshqaruv') +
+                `\n\n🔎 <b>Qidirish:</b> ism / username yoki Telegram ID yuboring.\n` +
+                `<i>Yoki pastdan foydalanuvchini tanlang.</i>`, {
                 parse_mode: 'HTML',
                 ...Markup.inlineKeyboard(buttons)
             });
@@ -29,9 +31,40 @@ const vipScene = new Scenes.WizardScene(
     // Step 2: Handle Selection or Search
     async (ctx) => {
         try {
+            if (ctx.callbackQuery && ctx.callbackQuery.data === 'cancel_vip') {
+                await ctx.answerCbQuery('❌').catch(() => { });
+                try { await ctx.editMessageText(ctx.t('cancel') || '❌ Cancel'); } catch (e) { }
+                return ctx.scene.leave();
+            }
+
             // Handle Search Text
             if (ctx.message && ctx.message.text) {
                 const query = ctx.message.text;
+
+                // Allow direct numeric ID input (telegramId)
+                if (/^\d+$/.test(query.trim())) {
+                    const telegramId = parseInt(query.trim());
+                    const user = await User.findOne({ telegramId });
+                    if (!user) {
+                        await ctx.reply(ctx.t('not_found') || 'Not found');
+                        return;
+                    }
+
+                    ctx.wizard.state.targetUserId = telegramId;
+                    ctx.wizard.state.targetUserName = user.firstName || user.username || 'Noma\'lum';
+
+                    await ctx.reply(ctx.t('vip_select_duration', { name: ctx.wizard.state.targetUserName, id: telegramId }), {
+                        parse_mode: 'HTML',
+                        ...Markup.inlineKeyboard([
+                            [Markup.button.callback('7 days', 'vip_7'), Markup.button.callback('30 days', 'vip_30')],
+                            [Markup.button.callback('90 days', 'vip_90'), Markup.button.callback('Permanent', 'vip_36500')],
+                            [Markup.button.callback(ctx.t('cancel') || '❌ Cancel', 'cancel_vip')]
+                        ])
+                    });
+
+                    return ctx.wizard.next();
+                }
+
                 // Search users
                 const users = await User.find({
                     $or: [

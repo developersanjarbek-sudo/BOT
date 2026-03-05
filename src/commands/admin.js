@@ -1116,53 +1116,6 @@ export const setupAdminCommands = (bot) => {
         }
     });
 
-    // 🔍 VIP Chat Monitor - Admin only view of active chat sessions
-    bot.hears('🔍 VIP Chat Monitor', async (ctx) => {
-        if (!await adminCheck(ctx)) return;
-
-        try {
-            const activeSessions = await getActiveChatSessions();
-            const waitingUsers = await getWaitingUsers();
-
-            let msg = '🔍 <b>VIP Chat Monitor</b>\n\n';
-
-            // Active Sessions
-            msg += '💬 <b>Aktiv Suhbatlar:</b>\n';
-            if (activeSessions.length === 0) {
-                msg += '└ Hozircha aktiv suhbat yo\'q\n\n';
-            } else {
-                activeSessions.forEach((session, i) => {
-                    const u1 = session.user1;
-                    const u2 = session.user2;
-                    msg += `\n${i + 1}. 👤 <b>${u1.name}</b> ${u1.username ? `(@${u1.username})` : ''}\n`;
-                    msg += `   🆔 <code>${u1.id}</code>\n`;
-                    msg += `   ↕️\n`;
-                    msg += `   👤 <b>${u2.name}</b> ${u2.username ? `(@${u2.username})` : ''}\n`;
-                    msg += `   🆔 <code>${u2.id}</code>\n`;
-                });
-                msg += '\n';
-            }
-
-            // Waiting Queue
-            msg += '⏳ <b>Kutayotganlar:</b>\n';
-            if (waitingUsers.length === 0) {
-                msg += '└ Navbatda hech kim yo\'q\n';
-            } else {
-                waitingUsers.forEach((user, i) => {
-                    msg += `${i + 1}. 👤 <b>${user.name}</b> ${user.username ? `(@${user.username})` : ''}\n`;
-                    msg += `   🆔 <code>${user.id}</code>\n`;
-                });
-            }
-
-            msg += '\n<i>⚠️ Bu ma\'lumotlar faqat admin uchun ko\'rinadi!</i>';
-
-            await ctx.replyWithHTML(msg);
-        } catch (e) {
-            logger.error('VIP Chat Monitor error:', e);
-            ctx.reply('❌ Xatolik yuz berdi.');
-        }
-    });
-
     // 🛡 Admin Logs (Button Handler)
     bot.hears('🗂 Admin Logs', async (ctx) => {
         if (ctx.from.id.toString() !== process.env.ADMIN_ID) return;

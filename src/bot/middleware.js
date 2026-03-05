@@ -20,6 +20,12 @@ const MAX_REQUESTS_PER_WINDOW = 30; // 30 requests per minute
 const BAN_THRESHOLD = 3; // Strikes before ban
 const BAN_DURATION = 60 * 60 * 1000; // 1 hour
 
+let cachedChannels = null;
+let cachedChannelsAt = 0;
+let cachedSubEnabled = null;
+let cachedSubEnabledAt = 0;
+const SUB_CACHE_TTL_MS = 60 * 1000;
+
 export const authMiddleware = async (ctx, next) => {
     if (!ctx.from) return next();
 
@@ -125,7 +131,44 @@ export const authMiddleware = async (ctx, next) => {
 
         // 📢 MANDATORY SUBSCRIPTION CHECK - ALL USERS (including admin)
         try {
-            const channels = await Channel.find({});
+            // Skip subscription check for callback queries to keep inline buttons responsive.
+            // Subscription gating is enforced on message-based interactions (/start, text, etc).
+            if (ctx.updateType === 'callback_query') {
+                return next();
+            }
+
+            // Bypass subscription check for admins to keep admin panel fast.
+            if (process.env.ADMIN_ID && userId.toString() === process.env.ADMIN_ID.toString()) {
+                return next();
+            }
+
+            // Per-session cache: if user passed subscription check recently, don't re-check each message.
+            // This avoids slow getChatMember on every text.
+            const nowSession = Date.now();
+            const SESSION_SUB_TTL_MS = 10 * 60 * 1000;
+            if (ctx.session?.subOkUntil && nowSession < ctx.session.subOkUntil) {
+                return next();
+            }
+
+            // Cache subscription channels/config to avoid slow DB on every message.
+            const now2 = Date.now();
+
+            if (cachedSubEnabled === null || (now2 - cachedSubEnabledAt) > SUB_CACHE_TTL_MS) {
+                const config = await Config.findOne({ key: 'subscription_enabled' });
+                cachedSubEnabled = config ? config.value : true;
+                cachedSubEnabledAt = now2;
+            }
+
+            if (!cachedSubEnabled) {
+                return next();
+            }
+
+            if (!cachedChannels || (now2 - cachedChannelsAt) > SUB_CACHE_TTL_MS) {
+                cachedChannels = await Channel.find({});
+                cachedChannelsAt = now2;
+            }
+
+            const channels = cachedChannels || [];
             logger.info(`📢 Subscription check: ${channels.length} channels found for user ${userId}`);
 
             if (channels.length > 0) {
@@ -160,6 +203,11 @@ export const authMiddleware = async (ctx, next) => {
                         }
                     );
                     return; // Stop processing - user must subscribe first
+                }
+
+                // Mark as ok for a while
+                if (ctx.session) {
+                    ctx.session.subOkUntil = Date.now() + SESSION_SUB_TTL_MS;
                 }
             }
         } catch (e) {

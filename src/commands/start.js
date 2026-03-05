@@ -259,7 +259,6 @@ export const setupStartCommand = (bot) => {
             `├ 📥 Tezkor yuklab olish\n` +
             `├ 🔓 Barcha kinolarga kirish\n` +
             `├ 💬 Sharh qoldirish\n` +
-            `├ 🗣 VIP Anonim Chat\n` +
             `├ 🎬 Kino so'rash imkoniyati\n` +
             `└ ⭐ Maxsus VIP Badge\n\n` +
             `💰 <b>Narxlar:</b>\n` +

@@ -330,16 +330,16 @@ export const setupUserCommands = (bot) => {
                 '🔥 Top kinolar', '📝 Kinolar ro\'yxati', '👥 Foydalanuvchilar',
                 '🔥 Top kinolar', '📝 Kinolar ro\'yxati', '👥 Foydalanuvchilar',
                 '🏠 Bosh menyu', '🔥 Top kinolar', '📊 Mening statistikam', '💎 VIP Boshqaruv',
-                '🗣 VIP Chat', '🗳 Ovoz berish', '⚙️ Sozlamalar', '⏳ VIP Vaqti', '📜 Mening Tarixim',
+                ' Ovoz berish', '⚙️ Sozlamalar', '⏳ VIP Vaqti', '📜 Mening Tarixim',
                 '🛍 Do\'kon', '🎁 Kunlik Bonus', '🗣 Do\'stlarni taklif qilish',
                 '🎫 Promokod', '🎫 Promo Code', '🎫 Промокод', // Promokod tugmalari
                 '💎 VIP Olish', '🎰 Tasodifiy Kino', '❌ Bekor qilish', // VIP va boshqa tugmalar
                 // Ru
                 '🏠 Главное меню', '🔍 Поиск фильмов', '📂 Категории', '🆕 Новинки', '❤️ Избранное',
-                '🔥 Топ фильмы', '📊 Моя статистика', '💎 VIP Управление', '🗣 VIP Чат', '🗳 Голосование', '⚙️ Настройки', '⏳ Время VIP', '📜 История',
+                '🔥 Топ фильмы', '📊 Моя статистика', '💎 VIP Управление', ' Голосование', '⚙️ Настройки', '⏳ Время VIP', '📜 История',
                 // En
                 '🏠 Main Menu', '🔍 Search Movies', '📂 Categories', '🆕 New Movies', '❤️ Favorites',
-                '🔥 Top Movies', '📊 My Stats', '💎 VIP Management', '🗣 VIP Chat', '🗳 Vote', '⚙️ Settings', '⏳ VIP Time', '📜 History'
+                '🔥 Top Movies', '📊 My Stats', '💎 VIP Management', '🗳 Vote', '⚙️ Settings', '⏳ VIP Time', '📜 History'
             ];
 
             if (!ctx.message?.text || ctx.message.text.startsWith('/') || buttonTexts.includes(ctx.message.text)) {
@@ -639,7 +639,6 @@ export const setupUserCommands = (bot) => {
                 `├ 📥 Cheklovsiz yuklash\n` +
                 `├ 🔓 Barcha kinolarga kirish\n` +
                 `├ 💬 Sharh qoldirish\n` +
-                `├ 🗣 VIP Anonim Chat\n` +
                 `├ 🎬 Kino so'rash imkoniyati\n` +
                 `└ ⭐ Maxsus VIP Badge\n\n` +
                 `💰 <b>Narxlar:</b>\n` +
@@ -650,7 +649,7 @@ export const setupUserCommands = (bot) => {
                 `<i>💡 VIP oling va kinolardan to'liq bahramand bo'ling!</i>`;
 
             await ctx.replyWithHTML(message, Markup.inlineKeyboard([
-                [Markup.button.url('📞 Adminga yozish', 'https://t.me/syphervoid')]
+                [Markup.button.url('📞 Adminga yozish', 'https://t.me/sanjarbek_404')]
             ]));
             ctx.answerCbQuery();
         } catch (error) {
