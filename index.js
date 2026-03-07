@@ -8,9 +8,13 @@ dotenv.config();
 // Main startup function
 const startBot = async () => {
     try {
-        // Express Server for Uptime/Webhook
         const app = express();
         const PORT = process.env.PORT || 3000;
+        
+        // Attempt DB Connection in background, don't crash the server if it fails
+        connectDB()
+            .then(() => console.log('✅ Database connected'))
+            .catch(err => console.error('❌ Database connection failed:', err.message));
 
         app.get('/', (req, res) => {
             res.send('🎥 Kino Bot is running...');
@@ -20,27 +24,39 @@ const startBot = async () => {
             res.json({ status: 'ok', timestamp: new Date() });
         });
 
-        app.listen(PORT, () => {
-            console.log(`🌐 Server running on port ${PORT}`);
-        });
-
-        // Connect DB & launch bot without blocking port binding.
-        (async () => {
+        // Setup Webhook or Long Polling based on Environment
+        const domain = process.env.RENDER_EXTERNAL_URL;
+        
+        if (domain) {
+            // Render specific: Use Webhooks
+            const webhookPath = `/telegraf/${bot.secretPathComponent()}`;
+            app.use(bot.webhookCallback(webhookPath));
+            
+            app.listen(PORT, async () => {
+                console.log(`🌐 Server (Webhook) running on port ${PORT}`);
+                try {
+                    await bot.telegram.setWebhook(`${domain}${webhookPath}`);
+                    console.log('🤖 Bot webhook configured successfully!');
+                } catch (e) {
+                    console.error('❌ Webhook setup failed:', e.message);
+                }
+            });
+        } else {
+            // Local fallback: Long Polling
+            app.listen(PORT, () => {
+                console.log(`🌐 Server (Polling) running on port ${PORT}`);
+            });
+            
             try {
-                await connectDB();
-                console.log('✅ Database connected');
-
                 await bot.launch();
-                console.log('🤖 Bot started successfully!');
+                console.log('🤖 Bot started successfully! (Long Polling)');
             } catch (err) {
-                console.error('❌ Bot startup failed:', err);
-                // Keep process alive so Render sees the port.
+                console.error('❌ Bot startup failed:', err.message);
             }
-        })();
-
+        }
+        
     } catch (err) {
         console.error('❌ Startup failed:', err);
-        // Keep process alive so Render sees the port.
     }
 };
 
