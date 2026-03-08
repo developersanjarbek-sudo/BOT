@@ -1,6 +1,7 @@
 import { Markup } from 'telegraf';
 import Movie from '../models/Movie.js';
 import User from '../models/User.js';
+import { getUserByTelegramId } from '../services/userService.js';
 import Favorite from '../models/Favorite.js';
 import { getTranslation } from '../utils/locales.js';
 import { sendMainMenu } from '../utils/menuUtils.js';
@@ -113,7 +114,7 @@ export const setupStartCommand = (bot) => {
                     movie.views = (movie.views || 0) + 1;
                     await movie.save().catch(() => { });
 
-                    const dbUser = await User.findOne({ telegramId: ctx.from.id }).catch(() => null);
+                    const dbUser = await getUserByTelegramId(ctx.from.id).catch(() => null);
                     const isVip = dbUser && dbUser.vipUntil && new Date(dbUser.vipUntil) > new Date();
 
                     // Use ctx.t for dynamic text? Deep link usually needs quick access. 
@@ -128,14 +129,18 @@ export const setupStartCommand = (bot) => {
 
                     if (movie.description) caption += `\n📝 ${movie.description}\n`;
 
+                    if (movie.isRestricted) {
+                        caption += `\n\n⚠️ <i>Ushbu kino qat'iy himoyalangan va uni yuklab olib bo'lmaydi. Faqat shu bot ichida ko'rish mumkin.</i>`;
+                    }
+
                     const buttons = [
                         [Markup.button.callback('❤️', `fav_${movie._id}`)],
                         [Markup.button.callback(ctx.t('menu_vip'), `review_${movie.code}`)]
                     ];
 
-                    if (isVip) {
+                    if (isVip && !movie.isRestricted) {
                         buttons[0].push(Markup.button.callback('📤', `share_${movie.code}`));
-                    } else {
+                    } else if (!isVip) {
                         buttons.push([Markup.button.callback('💎 VIP Olish - Eksklyuziv!', 'vip_info')]);
                     }
 
@@ -143,7 +148,7 @@ export const setupStartCommand = (bot) => {
                         await ctx.replyWithVideo(movie.fileId, {
                             caption,
                             parse_mode: 'HTML',
-                            protect_content: !isVip,
+                            protect_content: movie.isRestricted ? true : !isVip,
                             ...Markup.inlineKeyboard(buttons)
                         });
                         return;

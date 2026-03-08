@@ -1,11 +1,11 @@
 import { Markup } from 'telegraf';
-import User from '../models/User.js';
+import { getUserByTelegramId } from '../services/userService.js';
 import logger from './logger.js';
 
 export const sendMainMenu = async (ctx) => {
     try {
-        // Fetch fresh user data to ensure VIP status is up to date
-        const user = await User.findOne({ telegramId: ctx.from.id });
+        // Fetch fresh user data from CACHE (drastically faster)
+        const user = await getUserByTelegramId(ctx.from.id);
         const isVip = user && user.vipUntil && new Date(user.vipUntil) > new Date();
 
         // Store fresh user in session

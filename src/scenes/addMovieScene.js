@@ -113,7 +113,7 @@ const addMovieScene = new Scenes.WizardScene(
             return ctx.scene.leave();
         }
     },
-    // Step 7: Save
+    // Step 7: Ask for Restriction
     async (ctx) => {
         try {
             if (!ctx.message?.photo) {
@@ -123,6 +123,29 @@ const addMovieScene = new Scenes.WizardScene(
             // Get highest resolution photo
             ctx.wizard.state.poster = ctx.message.photo[ctx.message.photo.length - 1].file_id;
 
+            await ctx.reply('🔒 <b>VIP Himoyasi:</b>\n\nBu kino VIP foydalanuvchilar tomonidan yuklab olinishi mumkinmi, yoki qat\'iy himoyalansinmi (hech kim yuklay olmaydi)?', {
+                parse_mode: 'HTML',
+                ...Markup.inlineKeyboard([
+                    [Markup.button.callback('🔓 Standart (VIP yuklay oladi)', 'restrict_false')],
+                    [Markup.button.callback('🔐 Qat\'iy himoya (Faqat ko\'rish)', 'restrict_true')],
+                    [Markup.button.callback('❌ Bekor qilish', 'cancel_add')]
+                ])
+            });
+            return ctx.wizard.next();
+
+        } catch (e) {
+            logger.error('Add movie step 7 error:', e);
+            return ctx.scene.leave();
+        }
+    },
+    // Step 8: Save
+    async (ctx) => {
+        try {
+            if (ctx.callbackQuery) {
+                ctx.wizard.state.isRestricted = ctx.callbackQuery.data === 'restrict_true';
+                await ctx.answerCbQuery().catch(() => { });
+            }
+
             const movieData = {
                 title: ctx.wizard.state.title,
                 code: ctx.wizard.state.autoCode,
@@ -131,14 +154,15 @@ const addMovieScene = new Scenes.WizardScene(
                 description: ctx.wizard.state.description,
                 fileId: ctx.wizard.state.fileId,
                 link: ctx.wizard.state.link,
-                poster: ctx.wizard.state.poster
+                poster: ctx.wizard.state.poster,
+                isRestricted: ctx.wizard.state.isRestricted || false
             };
 
             const movie = await createMovie(movieData);
 
             // Success msg to Admin
             await ctx.replyWithPhoto(movie.poster, {
-                caption: `✅ <b>Kino muvaffaqiyatli saqlandi!</b>\n\n🎬 Nom: ${movie.title}\n📅 Yil: ${movie.year}\n🎭 Janr: ${movie.genre}\n🔢 Kod: <code>${movie.code}</code>\n\n<i>Foydalanuvchilar ${movie.code} kodini yuborib kinoni olishlari mumkin.</i>`,
+                caption: `✅ <b>Kino muvaffaqiyatli saqlandi!</b>\n\n🎬 Nom: ${movie.title}\n📅 Yil: ${movie.year}\n🎭 Janr: ${movie.genre}\n🔢 Kod: <code>${movie.code}</code>\n🔒 VIP Himoya: ${movie.isRestricted ? "Qat'iy (Hech kim yuklay olmaydi)" : "Standart (VIP yuklay oladi)"}\n\n<i>Foydalanuvchilar ${movie.code} kodini yuborib kinoni olishlari mumkin.</i>`,
                 parse_mode: 'HTML'
             });
 

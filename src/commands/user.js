@@ -4,6 +4,7 @@ import { getMovieByCode, searchMovies, getAllMovies, getTopMovies } from '../ser
 import Favorite from '../models/Favorite.js';
 import Movie from '../models/Movie.js';
 import User from '../models/User.js';
+import { getUserByTelegramId } from '../services/userService.js';
 import PromoCode from '../models/PromoCode.js';
 import { sendMainMenu } from '../utils/menuUtils.js';
 
@@ -35,6 +36,11 @@ const sendMovie = async (ctx, movie, dbUser) => {
         }
         caption += `\n👤 User: ${userWatermark}`;
 
+        // Add Restricted Warning
+        if (movie.isRestricted) {
+            caption += `\n\n⚠️ <i>Ushbu kino qat'iy himoyalangan va uni yuklab olib bo'lmaydi. Faqat shu bot ichida ko'rish mumkin.</i>`;
+        }
+
         // Increment User Watched Count (if DBUser exists)
         if (dbUser) {
             await User.findByIdAndUpdate(dbUser._id, {
@@ -61,8 +67,8 @@ const sendMovie = async (ctx, movie, dbUser) => {
             [Markup.button.callback(ctx.t('menu_vip'), `review_${movie.code}`), Markup.button.callback('💬', `read_reviews_${movie.code}`)]
         ];
 
-        // Sharing is VIP-only to reduce redistribution
-        if (isVip) {
+        // Sharing is VIP-only, and blocked entirely if movie is restricted
+        if (isVip && !movie.isRestricted) {
             buttons.push([Markup.button.callback('📤', `share_${movie.code}`)]);
         }
 
@@ -74,14 +80,14 @@ const sendMovie = async (ctx, movie, dbUser) => {
             buttons.push([Markup.button.callback('⚠️ Shikoyat', `report_${movie.code}`)]);
         }
 
-        // Send video for all users, but lock forwarding/saving for non-VIP
+        // Send video for all users, but lock forwarding/saving if restricted or non-VIP
         if (movie.fileId) {
             try {
                 // Video sending with protection
                 await ctx.replyWithVideo(movie.fileId, {
                     caption,
                     parse_mode: 'HTML',
-                    protect_content: !isVip,
+                    protect_content: movie.isRestricted ? true : !isVip,
                     thumb: movie.poster || undefined,
                     ...Markup.inlineKeyboard(buttons)
                 });
@@ -98,8 +104,8 @@ const sendMovie = async (ctx, movie, dbUser) => {
             }
         }
 
-        // If has link, show download only for VIP
-        if (movie.link && isVip) {
+        // If has link, show download only for VIP and if NOT restricted
+        if (movie.link && isVip && !movie.isRestricted) {
             buttons.unshift([Markup.button.url('📥 Download', movie.link)]);
         }
 
@@ -108,7 +114,7 @@ const sendMovie = async (ctx, movie, dbUser) => {
                 await ctx.replyWithPhoto(movie.poster, {
                     caption,
                     parse_mode: 'HTML',
-                    protect_content: !isVip,
+                    protect_content: movie.isRestricted ? true : !isVip,
                     ...Markup.inlineKeyboard(buttons)
                 });
 
@@ -155,7 +161,7 @@ export const setupUserCommands = (bot) => {
             message += '\n<i>Send code to watch!</i>';
 
             // Aggressive VIP Promo
-            const dbUser = await User.findOne({ telegramId: ctx.from.id });
+            const dbUser = await getUserByTelegramId(ctx.from.id);
             const isVip = dbUser && dbUser.vipUntil && new Date(dbUser.vipUntil) > new Date();
             const buttons = [];
             if (!isVip) {
@@ -183,7 +189,7 @@ export const setupUserCommands = (bot) => {
             });
 
             // Aggressive VIP Promo
-            const dbUser = await User.findOne({ telegramId: ctx.from.id });
+            const dbUser = await getUserByTelegramId(ctx.from.id);
             const isVip = dbUser && dbUser.vipUntil && new Date(dbUser.vipUntil) > new Date();
             const buttons = [];
             if (!isVip) {
@@ -200,7 +206,7 @@ export const setupUserCommands = (bot) => {
     // Handle "⏳ VIP Status"
     bot.hears(['⏳ VIP Vaqti', '⏳ Время VIP', '⏳ VIP Time'], async (ctx) => {
         try {
-            const user = await User.findOne({ telegramId: ctx.from.id });
+            const user = await getUserByTelegramId(ctx.from.id);
             if (user && user.vipUntil && new Date(user.vipUntil) > new Date()) {
                 const now = new Date();
                 const diff = new Date(user.vipUntil) - now;
@@ -267,7 +273,7 @@ export const setupUserCommands = (bot) => {
     // Handle "⭐ Sevimlilar"
     bot.hears(['⭐ Sevimlilar', '❤️ Избранное', '❤️ Favorites'], async (ctx) => {
         try {
-            const dbUser = await User.findOne({ telegramId: ctx.from.id });
+            const dbUser = await getUserByTelegramId(ctx.from.id);
 
             // 1. VIP CHECK FIRST
             // If user doesn't exist, they can't be VIP. If they do, check expiration.
@@ -374,7 +380,7 @@ export const setupUserCommands = (bot) => {
                 msg += '\n<i>Send code!</i>';
 
                 // Aggressive VIP Promo
-                const dbUser = await User.findOne({ telegramId: ctx.from.id });
+                const dbUser = await getUserByTelegramId(ctx.from.id);
                 const isVip = dbUser && dbUser.vipUntil && new Date(dbUser.vipUntil) > new Date();
                 const buttons = [];
                 if (!isVip) {
@@ -392,7 +398,7 @@ export const setupUserCommands = (bot) => {
     // Handle Callbacks
     bot.action(/fav_(.+)/, async (ctx) => {
         try {
-            const dbUser = await User.findOne({ telegramId: ctx.from.id });
+            const dbUser = await getUserByTelegramId(ctx.from.id);
             const isVip = dbUser && dbUser.vipUntil && new Date(dbUser.vipUntil) > new Date();
 
             // 🔒 RESTRICTION: Favorites are VIP Only
@@ -434,7 +440,7 @@ export const setupUserCommands = (bot) => {
     bot.action(/review_(\d+)/, async (ctx) => {
         try {
             const code = parseInt(ctx.match[1]);
-            const dbUser = await User.findOne({ telegramId: ctx.from.id });
+            const dbUser = await getUserByTelegramId(ctx.from.id);
 
             // VIP CHECK for Review
             const isVip = dbUser && dbUser.vipUntil && new Date(dbUser.vipUntil) > new Date();
@@ -460,7 +466,7 @@ export const setupUserCommands = (bot) => {
             }
 
             // 🔒 RESTRICTION: Read Reviews are VIP Only
-            const dbUser = await User.findOne({ telegramId: ctx.from.id });
+            const dbUser = await getUserByTelegramId(ctx.from.id);
             const isVip = dbUser && dbUser.vipUntil && new Date(dbUser.vipUntil) > new Date();
             if (!isVip) {
                 return ctx.answerCbQuery(ctx.t('vip_restricted_review'), { show_alert: true });
@@ -492,7 +498,7 @@ export const setupUserCommands = (bot) => {
     // 🎁 Daily Bonus
     bot.hears(['🎁 Kunlik Bonus', '🎁 Daily Bonus', '🎁 Ежедневный бонус'], async (ctx) => {
         try {
-            const user = await User.findOne({ telegramId: ctx.from.id });
+            const user = await getUserByTelegramId(ctx.from.id);
             const now = new Date();
 
             // Check cooldown (24 hours) - actually user said "Daily".
@@ -519,7 +525,7 @@ export const setupUserCommands = (bot) => {
     // 🛍 Shop
     bot.hears(['🛍 Do\'kon', '🛍 Shop', '🛍 Магазин'], async (ctx) => {
         try {
-            const user = await User.findOne({ telegramId: ctx.from.id });
+            const user = await getUserByTelegramId(ctx.from.id);
             const msg = ctx.t('shop_welcome', { points: user.points || 0 });
 
             await ctx.replyWithHTML(msg, Markup.inlineKeyboard([
@@ -531,7 +537,7 @@ export const setupUserCommands = (bot) => {
     // Shop Action
     bot.action('buy_vip_7', async (ctx) => {
         try {
-            const user = await User.findOne({ telegramId: ctx.from.id });
+            const user = await getUserByTelegramId(ctx.from.id);
             if (user.points >= 5000) {
                 user.points -= 5000;
 
@@ -590,7 +596,7 @@ export const setupUserCommands = (bot) => {
     bot.action(/report_(\d+)/, async (ctx) => {
         try {
             const code = ctx.match[1];
-            const dbUser = await User.findOne({ telegramId: ctx.from.id });
+            const dbUser = await getUserByTelegramId(ctx.from.id);
             const isVip = dbUser && dbUser.vipUntil && new Date(dbUser.vipUntil) > new Date();
 
             // VIP tekshiruvi

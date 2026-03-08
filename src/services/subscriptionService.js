@@ -1,10 +1,17 @@
 import Channel from '../models/Channel.js';
 import Config from '../models/Config.js';
 import logger from '../utils/logger.js';
+import NodeCache from 'node-cache';
+
+const subCache = new NodeCache({ stdTTL: 60, checkperiod: 60 });
 
 export const getRequiredChannels = async () => {
+    const cached = subCache.get('channels');
+    if (cached) return cached;
     try {
-        return await Channel.find();
+        const channels = await Channel.find();
+        subCache.set('channels', channels);
+        return channels;
     } catch (e) {
         return [];
     }
@@ -13,6 +20,7 @@ export const getRequiredChannels = async () => {
 export const addChannel = async (channelId, name, inviteLink, adminId) => {
     try {
         await Channel.create({ channelId, name, inviteLink, addedBy: adminId });
+        subCache.del('channels'); // Clear cache
         return true;
     } catch (e) {
         logger.error('Add channel error:', e);
@@ -23,6 +31,7 @@ export const addChannel = async (channelId, name, inviteLink, adminId) => {
 export const removeChannel = async (channelId) => {
     try {
         await Channel.findOneAndDelete({ channelId });
+        subCache.del('channels'); // Clear cache
         return true;
     } catch (e) {
         return false;
@@ -36,6 +45,7 @@ export const toggleSubscription = async (status) => {
             { value: status },
             { upsert: true, new: true }
         );
+        subCache.set('subscription_enabled', status);
         return true;
     } catch (e) {
         return false;
@@ -44,15 +54,13 @@ export const toggleSubscription = async (status) => {
 
 export const checkSubscription = async (ctx) => {
     try {
-        // Check global switch
-        const config = await Config.findOne({ key: 'subscription_enabled' });
-        // Default to TRUE if not set? Or FALSE? 
-        // User wants to "turn it on", implying it might be off.
-        // Let's default to TRUE (enabled) if not present, to match existing behavior.
-        // OR default to FALSE if he wants to "add" it.
-        // Existing behavior was "always on if channels exist". 
-        // So default should be true.
-        const isEnabled = config ? config.value : true;
+        // Check global switch from cache
+        let isEnabled = subCache.get('subscription_enabled');
+        if (isEnabled === undefined) {
+            const config = await Config.findOne({ key: 'subscription_enabled' });
+            isEnabled = config ? config.value : true;
+            subCache.set('subscription_enabled', isEnabled);
+        }
 
         if (!isEnabled) return true; // Feature disabled
         const channels = await getRequiredChannels();

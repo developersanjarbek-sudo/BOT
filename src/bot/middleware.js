@@ -13,8 +13,11 @@ const vipPromoMessages = [
     "🎬 <b>Yangi kinolarni birinchilardan bo'lib ko'ring!</b>\n\n💎 VIP foydalanuvchilar uchun eksklyuziv imkoniyatlar.",
     "🔒 <b>Maxfiy chat va ko'proq imkoniyatlar!</b>\n\n💎 VIP obuna bilan barchasiga ega bo'ling."
 ];
-const rateLimitMap = new Map();
-const strikesMap = new Map();
+// 🛡️ Rate Limiting & Anti-Flood using NodeCache
+import NodeCache from 'node-cache';
+const rateLimitCache = new NodeCache({ stdTTL: 60, checkperiod: 60 });
+const strikesCache = new NodeCache({ stdTTL: 3600, checkperiod: 300 });
+
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 30; // 30 requests per minute
 const BAN_THRESHOLD = 3; // Strikes before ban
@@ -33,12 +36,12 @@ export const authMiddleware = async (ctx, next) => {
 
     // 🛡️ Rate Limiting & Anti-Flood
     const now = Date.now();
-    const userRateData = rateLimitMap.get(userId) || { count: 0, resetTime: now + RATE_LIMIT_WINDOW, lastReq: 0 };
+    const userRateData = rateLimitCache.get(userId) || { count: 0, resetTime: now + RATE_LIMIT_WINDOW, lastReq: 0 };
 
     // Check if rapid spam (requests < 500ms apart)
     if (now - userRateData.lastReq < 500 && userId.toString() !== process.env.ADMIN_ID) {
-        const strikes = (strikesMap.get(userId) || 0) + 1;
-        strikesMap.set(userId, strikes);
+        const strikes = (strikesCache.get(userId) || 0) + 1;
+        strikesCache.set(userId, strikes);
 
         if (strikes >= BAN_THRESHOLD) {
             // AUTO BAN
@@ -64,12 +67,12 @@ export const authMiddleware = async (ctx, next) => {
                     }
                 }, BAN_DURATION);
             }
-            strikesMap.delete(userId); // Reset strikes
+            strikesCache.del(userId); // Reset strikes
             return ctx.reply('⛔️ <b>Siz spam tufayli 1 soatga bloklandingiz!</b>', { parse_mode: 'HTML' });
         }
 
         userRateData.lastReq = now;
-        rateLimitMap.set(userId, userRateData);
+        rateLimitCache.set(userId, userRateData);
         return ctx.reply('⚠️ <b>Iltimos, sekinroq yozing!</b> (Spam aniqlandi)', { parse_mode: 'HTML' });
     }
 
@@ -83,7 +86,7 @@ export const authMiddleware = async (ctx, next) => {
         userRateData.count++;
     }
 
-    rateLimitMap.set(userId, userRateData);
+    rateLimitCache.set(userId, userRateData);
 
     if (userRateData.count > MAX_REQUESTS_PER_WINDOW && userId.toString() !== process.env.ADMIN_ID) {
         logger.warn(`⚠️ Rate limit exceeded for user ${userId}`);
@@ -150,65 +153,28 @@ export const authMiddleware = async (ctx, next) => {
                 return next();
             }
 
-            // Cache subscription channels/config to avoid slow DB on every message.
-            const now2 = Date.now();
+            const subStatus = await checkSubscription(ctx);
 
-            if (cachedSubEnabled === null || (now2 - cachedSubEnabledAt) > SUB_CACHE_TTL_MS) {
-                const config = await Config.findOne({ key: 'subscription_enabled' });
-                cachedSubEnabled = config ? config.value : true;
-                cachedSubEnabledAt = now2;
-            }
+            if (subStatus !== true && Array.isArray(subStatus) && subStatus.length > 0) {
+                logger.info(`User ${userId} not subscribed to ${subStatus.length} channel(s)`);
+                const buttons = subStatus.map(ch => [
+                    Markup.button.url(`📢 ${ch.name}`, ch.inviteLink.startsWith('http') ? ch.inviteLink : `https://${ch.inviteLink}`)
+                ]);
+                buttons.push([Markup.button.callback('✅ Tekshirish', 'check_subscription')]);
 
-            if (!cachedSubEnabled) {
-                return next();
-            }
-
-            if (!cachedChannels || (now2 - cachedChannelsAt) > SUB_CACHE_TTL_MS) {
-                cachedChannels = await Channel.find({});
-                cachedChannelsAt = now2;
-            }
-
-            const channels = cachedChannels || [];
-            logger.info(`📢 Subscription check: ${channels.length} channels found for user ${userId}`);
-
-            if (channels.length > 0) {
-                const notSubscribed = [];
-
-                for (const ch of channels) {
-                    try {
-                        const member = await ctx.telegram.getChatMember(ch.channelId, userId);
-                        logger.info(`Channel ${ch.name}: status = ${member.status}`);
-                        if (!['member', 'administrator', 'creator'].includes(member.status)) {
-                            notSubscribed.push(ch);
-                        }
-                    } catch (e) {
-                        logger.error(`Channel ${ch.name} check failed:`, e.message);
-                        // If can't check, assume not subscribed
-                        notSubscribed.push(ch);
+                await ctx.reply(
+                    '📢 <b>Botdan foydalanish uchun quyidagi kanallarga obuna bo\'ling:</b>\n\n<i>Obuna bo\'lgach, "✅ Tekshirish" tugmasini bosing.</i>',
+                    {
+                        parse_mode: 'HTML',
+                        ...Markup.inlineKeyboard(buttons)
                     }
-                }
+                );
+                return; // Stop processing - user must subscribe first
+            }
 
-                if (notSubscribed.length > 0) {
-                    logger.info(`User ${userId} not subscribed to ${notSubscribed.length} channel(s)`);
-                    const buttons = notSubscribed.map(ch => [
-                        Markup.button.url(`📢 ${ch.name}`, ch.inviteLink.startsWith('http') ? ch.inviteLink : `https://${ch.inviteLink}`)
-                    ]);
-                    buttons.push([Markup.button.callback('✅ Tekshirish', 'check_subscription')]);
-
-                    await ctx.reply(
-                        '📢 <b>Botdan foydalanish uchun quyidagi kanallarga obuna bo\'ling:</b>\n\n<i>Obuna bo\'lgach, "✅ Tekshirish" tugmasini bosing.</i>',
-                        {
-                            parse_mode: 'HTML',
-                            ...Markup.inlineKeyboard(buttons)
-                        }
-                    );
-                    return; // Stop processing - user must subscribe first
-                }
-
-                // Mark as ok for a while
-                if (ctx.session) {
-                    ctx.session.subOkUntil = Date.now() + SESSION_SUB_TTL_MS;
-                }
+            // Mark as ok for a while
+            if (ctx.session) {
+                ctx.session.subOkUntil = Date.now() + SESSION_SUB_TTL_MS;
             }
         } catch (e) {
             logger.error('Subscription check error:', e);

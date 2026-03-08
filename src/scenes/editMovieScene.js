@@ -30,14 +30,16 @@ const editMovieScene = new Scenes.WizardScene(
                 `1. 🏷 Nomini o'zgartirish\n` +
                 `2. 🖼 Posterni o'zgartirish\n` +
                 `3. 📝 Tavsifni o'zgartirish\n` +
-                `4. ❌ Tugatish`;
+                `4. 🔒 VIP Himoyasi o'rnatish/yechish\n` +
+                `5. ❌ Tugatish\n\n` +
+                `Hozirgi himoya: ${movie.isRestricted ? "🔐 Qat'iy (VIP ham yuklay olmaydi)" : "🔓 Standart (VIP yuklay oladi)"}`;
 
             await ctx.replyWithPhoto(movie.poster, {
                 caption: msg,
                 parse_mode: 'HTML',
                 ...Markup.inlineKeyboard([
                     [Markup.button.callback('🏷 Nomi', 'edit_title'), Markup.button.callback('🖼 Poster', 'edit_poster')],
-                    [Markup.button.callback('📝 Tavsif', 'edit_desc')],
+                    [Markup.button.callback('📝 Tavsif', 'edit_desc'), Markup.button.callback(movie.isRestricted ? '🔓 Yechish' : '🔐 Qulflash', 'toggle_restrict')],
                     [Markup.button.callback('❌ Chiqish', 'cancel_edit')]
                 ])
             });
@@ -77,14 +79,16 @@ const editMovieScene = new Scenes.WizardScene(
                 `1. 🏷 Nomini o'zgartirish\n` +
                 `2. 🖼 Posterni o'zgartirish\n` +
                 `3. 📝 Tavsifni o'zgartirish\n` +
-                `4. ❌ Tugatish`;
+                `4. 🔒 VIP Himoyasi o'rnatish/yechish\n` +
+                `5. ❌ Tugatish\n\n` +
+                `Hozirgi himoya: ${movie.isRestricted ? "🔐 Qat'iy (VIP ham yuklay olmaydi)" : "🔓 Standart (VIP yuklay oladi)"}`;
 
             await ctx.replyWithPhoto(movie.poster, {
                 caption: msg,
                 parse_mode: 'HTML',
                 ...Markup.inlineKeyboard([
                     [Markup.button.callback('🏷 Nomi', 'edit_title'), Markup.button.callback('🖼 Poster', 'edit_poster')],
-                    [Markup.button.callback('📝 Tavsif', 'edit_desc')],
+                    [Markup.button.callback('📝 Tavsif', 'edit_desc'), Markup.button.callback(movie.isRestricted ? '🔓 Yechish' : '🔐 Qulflash', 'toggle_restrict')],
                     [Markup.button.callback('❌ Chiqish', 'cancel_edit')]
                 ])
             });
@@ -121,6 +125,39 @@ editMovieScene.action('edit_desc', async (ctx) => {
     await ctx.reply('📝 Yangi tavsifni yuboring:');
     ctx.wizard.state.editMode = 'desc';
     ctx.wizard.selectStep(3);
+});
+
+editMovieScene.action('toggle_restrict', async (ctx) => {
+    try {
+        const movieCode = ctx.wizard.state.movieCode;
+        const movie = await Movie.findOne({ code: movieCode });
+        if (movie) {
+            movie.isRestricted = !movie.isRestricted;
+            await movie.save();
+            await ctx.answerCbQuery(movie.isRestricted ? '🔐 Qat\'iy himoyalandi' : '🔓 Himoya olib tashlandi');
+
+            // Re-render menu
+            const msg = `📝 <b>Tahrirlash:</b> ${movie.title}\n\n` +
+                `1. 🏷 Nomini o'zgartirish\n` +
+                `2. 🖼 Posterni o'zgartirish\n` +
+                `3. 📝 Tavsifni o'zgartirish\n` +
+                `4. 🔒 VIP Himoyasi o'rnatish/yechish\n` +
+                `5. ❌ Tugatish\n\n` +
+                `Hozirgi himoya: ${movie.isRestricted ? "🔐 Qat'iy (VIP ham yuklay olmaydi)" : "🔓 Standart (VIP yuklay oladi)"}`;
+
+            await ctx.editMessageCaption(msg, {
+                parse_mode: 'HTML',
+                ...Markup.inlineKeyboard([
+                    [Markup.button.callback('🏷 Nomi', 'edit_title'), Markup.button.callback('🖼 Poster', 'edit_poster')],
+                    [Markup.button.callback('📝 Tavsif', 'edit_desc'), Markup.button.callback(movie.isRestricted ? '🔓 Yechish' : '🔐 Qulflash', 'toggle_restrict')],
+                    [Markup.button.callback('❌ Chiqish', 'cancel_edit')]
+                ])
+            });
+        }
+    } catch (e) {
+        logger.error('Toggle restrict error:', e);
+        await ctx.answerCbQuery('❌ Xato').catch(() => { });
+    }
 });
 
 editMovieScene.action('cancel_edit', async (ctx) => {

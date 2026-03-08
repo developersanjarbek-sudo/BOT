@@ -20,6 +20,10 @@ const movieSchema = new mongoose.Schema({
         type: Number,
         default: 0,
     },
+    isRestricted: {
+        type: Boolean,
+        default: false, // If true, VIP cannot download/forward either
+    },
     createdAt: {
         type: Date,
         default: Date.now,
